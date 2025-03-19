@@ -1,4 +1,3 @@
-// ChemistryCrush.js
 import React, { useState, useEffect } from 'react';
 import './ChemistryCrush.css'; // We'll create this CSS file separately
 
@@ -9,14 +8,16 @@ const Icons = {
   Info: () => <span className="icon">ℹ</span>,
   ChevronRight: () => <span className="icon">→</span>,
   ChevronLeft: () => <span className="icon">←</span>,
+  AlertTriangle: () => <span className="icon">⚠</span>,
 };
 
 const ChemistryCrush = () => {
   // Game states
   const [currentLevel, setCurrentLevel] = useState(1);
   const [score, setScore] = useState(0);
+  const [totalScore, setTotalScore] = useState(0);
   const [targetScore, setTargetScore] = useState(300);
-  const [moves, setMoves] = useState(25);
+  const [moves, setMoves] = useState(10);
   const [gameBoard, setGameBoard] = useState([]);
   const [selectedAtoms, setSelectedAtoms] = useState([]);
   const [compounds, setCompounds] = useState([]);
@@ -25,6 +26,11 @@ const ChemistryCrush = () => {
   const [gameStatus, setGameStatus] = useState('playing'); // 'playing', 'won', 'lost'
   const [showElementCount, setShowElementCount] = useState({});
   const [compoundHistory, setCompoundHistory] = useState([]);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [correctTries, setCorrectTries] = useState(0);
+  const [incorrectTries, setIncorrectTries] = useState(0);
+  const [gameCompleted, setGameCompleted] = useState(false);
   
   // Level definitions
   const levels = [
@@ -37,7 +43,8 @@ const ChemistryCrush = () => {
       description: "Water - Ratio of hydrogen to oxygen is 2:1",
       ratioExplanation: "In water (H₂O), for every 1 oxygen atom, you need 2 hydrogen atoms. This 2:1 ratio is essential for forming the water molecule.",
       targetScore: 300,
-      pointsPerCompound: 100
+      pointsPerCompound: 100,
+      moves: 10
     },
     {
       id: 2,
@@ -48,7 +55,8 @@ const ChemistryCrush = () => {
       description: "Hydrogen Peroxide - Ratio of hydrogen to oxygen is 2:2 or 1:1",
       ratioExplanation: "Hydrogen peroxide (H₂O₂) has a 1:1 ratio of hydrogen to oxygen atoms. Compare this to water (H₂O) which has a 2:1 ratio.",
       targetScore: 400,
-      pointsPerCompound: 100
+      pointsPerCompound: 100,
+      moves: 9
     },
     {
       id: 3,
@@ -59,7 +67,8 @@ const ChemistryCrush = () => {
       description: "Carbon Dioxide - Ratio of carbon to oxygen is 1:2",
       ratioExplanation: "In CO₂, the ratio of carbon to oxygen is 1:2. This means for every carbon atom, you need twice as many oxygen atoms.",
       targetScore: 400,
-      pointsPerCompound: 100
+      pointsPerCompound: 100,
+      moves: 8
     },
     {
       id: 4,
@@ -70,7 +79,8 @@ const ChemistryCrush = () => {
       description: "Carbon Monoxide - Ratio of carbon to oxygen is 1:1",
       ratioExplanation: "In CO, the ratio is 1:1 - equal numbers of carbon and oxygen atoms. Compare this with CO₂ which has a 1:2 ratio.",
       targetScore: 400,
-      pointsPerCompound: 100
+      pointsPerCompound: 100,
+      moves: 8
     },
     {
       id: 5,
@@ -81,7 +91,8 @@ const ChemistryCrush = () => {
       description: "Ammonia - Ratio of nitrogen to hydrogen is 1:3",
       ratioExplanation: "Ammonia (NH₃) has a ratio of 1:3 between nitrogen and hydrogen. For every nitrogen atom, you need three hydrogen atoms.",
       targetScore: 500,
-      pointsPerCompound: 100
+      pointsPerCompound: 100,
+      moves: 7
     },
     {
       id: 6,
@@ -92,7 +103,8 @@ const ChemistryCrush = () => {
       description: "Methane - Ratio of carbon to hydrogen is 1:4",
       ratioExplanation: "In methane (CH₄), the ratio of carbon to hydrogen is 1:4. This means one carbon atom combines with four hydrogen atoms.",
       targetScore: 500,
-      pointsPerCompound: 100
+      pointsPerCompound: 100,
+      moves: 7
     },
     {
       id: 7,
@@ -103,7 +115,8 @@ const ChemistryCrush = () => {
       description: "Ethanol - Ratio of C:H:O is 2:6:1",
       ratioExplanation: "Ethanol (C₂H₅OH) has a ratio of 2:6:1 for carbon:hydrogen:oxygen. Note how the ratios become more complex with three elements.",
       targetScore: 600,
-      pointsPerCompound: 150
+      pointsPerCompound: 150,
+      moves: 6
     },
     {
       id: 8,
@@ -114,7 +127,8 @@ const ChemistryCrush = () => {
       description: "Glucose - Ratio of C:H:O is 6:12:6 or 1:2:1",
       ratioExplanation: "Glucose (C₆H₁₂O₆) has a ratio of 6:12:6 which simplifies to 1:2:1. This shows that equivalent ratios can be expressed in simplified form.",
       targetScore: 600,
-      pointsPerCompound: 200
+      pointsPerCompound: 200,
+      moves: 5
     }
   ];
 
@@ -134,12 +148,22 @@ const ChemistryCrush = () => {
     resetLevel(currentLevel);
   }, [currentLevel]);
 
+  // Hide feedback after 3 seconds
+  useEffect(() => {
+    if (showFeedback) {
+      const timer = setTimeout(() => {
+        setShowFeedback(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showFeedback]);
+
   // Create a new game board for the current level
   const resetLevel = (levelNum) => {
     const level = levels.find(l => l.id === levelNum) || levels[0];
     
     // Reset game state
-    setMoves(25);
+    setMoves(level.moves);
     setSelectedAtoms([]);
     setCompletedCompounds(0);
     setCompoundHistory([]);
@@ -147,6 +171,8 @@ const ChemistryCrush = () => {
     setTargetScore(level.targetScore);
     setGameStatus('playing');
     setShowElementCount({});
+    setShowFeedback(false);
+    setFeedbackMessage('');
     
     // Set available compounds for this level
     setCompounds(level.targets);
@@ -238,6 +264,10 @@ const ChemistryCrush = () => {
         // Add points
         const newScore = score + currentLevelObj.pointsPerCompound;
         setScore(newScore);
+        setTotalScore(totalScore + currentLevelObj.pointsPerCompound);
+        
+        // Increment correct tries
+        setCorrectTries(correctTries + 1);
         
         // Replace selected atoms with new random ones
         const newBoard = [...gameBoard];
@@ -252,6 +282,10 @@ const ChemistryCrush = () => {
         
         setGameBoard(newBoard);
         
+        // Show positive feedback
+        setFeedbackMessage(`Correct! You formed ${target.formula}`);
+        setShowFeedback(true);
+        
         // Check if target score has been reached
         if (newScore >= targetScore) {
           setGameStatus('won');
@@ -259,13 +293,23 @@ const ChemistryCrush = () => {
       }
     });
     
+    // If no valid compound was found, show feedback
+    if (!compoundFound) {
+      // Increment incorrect tries
+      setIncorrectTries(incorrectTries + 1);
+      
+      // Show negative feedback
+      setFeedbackMessage("Incorrect compound! Check your ratios");
+      setShowFeedback(true);
+    }
+    
     // Use a move regardless of success
     setMoves(moves - 1);
     setSelectedAtoms([]);
     setShowElementCount({});
     
     // Check loss condition
-    if (moves <= 1 && !compoundFound) {
+    if (moves <= 1 && !compoundFound && score < targetScore) {
       setGameStatus('lost');
     }
     
@@ -276,6 +320,9 @@ const ChemistryCrush = () => {
   const nextLevel = () => {
     if (currentLevel < levels.length) {
       setCurrentLevel(currentLevel + 1);
+    } else if (currentLevel === levels.length && gameStatus === 'won') {
+      // Game completed - all levels finished
+      setGameCompleted(true);
     }
   };
 
@@ -284,6 +331,16 @@ const ChemistryCrush = () => {
     if (currentLevel > 1) {
       setCurrentLevel(currentLevel - 1);
     }
+  };
+
+  // Reset the whole game
+  const resetGame = () => {
+    setCurrentLevel(1);
+    setTotalScore(0);
+    setCorrectTries(0);
+    setIncorrectTries(0);
+    setGameCompleted(false);
+    resetLevel(1);
   };
 
   // Render atom on the game board
@@ -387,14 +444,16 @@ const ChemistryCrush = () => {
                 </div>
               </div>
               
-              <p className="score">Final Score: {score}/{targetScore}</p>
+              <p className="score">Level Score: {score}/{targetScore}</p>
+              <p className="total-score">Total Score: {totalScore}</p>
             </div>
           ) : (
             <div className="result-content">
               <p>You ran out of moves before reaching the target score.</p>
               <p>Remember the ratio: {currentLevelObj.description.split('-')[1].trim()}</p>
               <p>You created {completedCompounds} {currentLevelObj.targets[0].formula} compounds.</p>
-              <p className="score">Score: {score}/{targetScore}</p>
+              <p className="score">Level Score: {score}/{targetScore}</p>
+              <p className="total-score">Total Score: {totalScore}</p>
             </div>
           )}
           
@@ -414,6 +473,68 @@ const ChemistryCrush = () => {
                 Next Level <Icons.ChevronRight />
               </button>
             )}
+            
+            {gameStatus === 'won' && currentLevel === levels.length && (
+              <button 
+                className="game-button next-button"
+                onClick={nextLevel}
+              >
+                Complete Game <Icons.ChevronRight />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render game completion screen
+  const renderGameCompletion = () => {
+    return (
+      <div className="modal-overlay">
+        <div className="modal">
+          <h2 className="result-title">Game Complete!</h2>
+          
+          <div className="result-content">
+            <div className="trophy-icon">🏆</div>
+            <p className="congratulations">Congratulations! You've completed all levels!</p>
+            
+            <div className="final-stats">
+              <h3>Your Final Results:</h3>
+              <div className="stats-grid">
+                <div className="stat-box">
+                  <p className="stat-label">Total Score</p>
+                  <p className="stat-value">{totalScore}</p>
+                </div>
+                <div className="stat-box">
+                  <p className="stat-label">Correct Tries</p>
+                  <p className="stat-value">{correctTries}</p>
+                </div>
+                <div className="stat-box">
+                  <p className="stat-label">Incorrect Tries</p>
+                  <p className="stat-value">{incorrectTries}</p>
+                </div>
+                <div className="stat-box">
+                  <p className="stat-label">Accuracy</p>
+                  <p className="stat-value">
+                    {Math.round((correctTries / (correctTries + incorrectTries)) * 100)}%
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <p className="mastery-message">
+              You've mastered the basics of chemical ratios and compounds!
+            </p>
+          </div>
+          
+          <div className="button-row">
+            <button 
+              className="game-button play-again-button"
+              onClick={resetGame}
+            >
+              <Icons.RefreshCw /> Play Again
+            </button>
           </div>
         </div>
       </div>
@@ -449,6 +570,19 @@ const ChemistryCrush = () => {
     );
   };
 
+  // Render feedback message
+  const renderFeedback = () => {
+    if (!showFeedback) return null;
+    
+    const isCorrect = feedbackMessage.startsWith('Correct');
+    
+    return (
+      <div className={`feedback-message ${isCorrect ? 'correct' : 'incorrect'}`}>
+        {isCorrect ? '✓ ' : <Icons.AlertTriangle />} {feedbackMessage}
+      </div>
+    );
+  };
+
   return (
     <div className="game-container">
       {/* Game Header */}
@@ -469,7 +603,10 @@ const ChemistryCrush = () => {
         <div className="game-info">
           <div className="stats">
             <div className="stat-item">
-              Score: <span className="stat-value">{score}</span>
+              Level Score: <span className="stat-value">{score}</span>
+            </div>
+            <div className="stat-item">
+              Total Score: <span className="stat-value">{totalScore}</span>
             </div>
             <div className="stat-item">
               Moves: <span className="stat-value">{moves}</span>
@@ -513,6 +650,9 @@ const ChemistryCrush = () => {
           
           {/* Ratio Display */}
           {Object.keys(showElementCount).length > 0 && renderRatioDisplay()}
+          
+          {/* Feedback Message */}
+          {renderFeedback()}
         </div>
       </div>
       
@@ -594,7 +734,7 @@ const ChemistryCrush = () => {
         <button 
           className={`nav-button next-button ${currentLevel >= levels.length ? 'disabled' : ''}`}
           onClick={nextLevel}
-          disabled={currentLevel >= levels.length}
+          disabled={currentLevel >= levels.length || gameStatus !== 'won'}
         >
           Next Level <Icons.ChevronRight />
         </button>
@@ -604,7 +744,10 @@ const ChemistryCrush = () => {
       {showTutorial && renderTutorial()}
       
       {/* Game Over Screen */}
-      {gameStatus !== 'playing' && renderGameOver()}
+      {gameStatus !== 'playing' && !gameCompleted && renderGameOver()}
+      
+      {/* Game Completion Screen */}
+      {gameCompleted && renderGameCompletion()}
     </div>
   );
 };
