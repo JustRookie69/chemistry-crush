@@ -273,17 +273,11 @@ const ChemistryCrush = () => {
     
     if (isSelected) {
       if (atom.id === selectedAtoms[selectedAtoms.length - 1].id) {
-        // Remove the last connection and atom
+        // Remove the last atom
         const newSelectedAtoms = [...selectedAtoms];
         newSelectedAtoms.pop();
         
-        const newConnections = [...connections];
-        if (newConnections.length > 0) {
-          newConnections.pop();
-        }
-        
         setSelectedAtoms(newSelectedAtoms);
-        setConnections(newConnections);
         updateElementCount(newSelectedAtoms);
       }
       return;
@@ -300,42 +294,17 @@ const ChemistryCrush = () => {
     const newSelectedAtoms = [...selectedAtoms, atom];
     setSelectedAtoms(newSelectedAtoms);
     
-    // If there's at least one previously selected atom, create a connection
-    if (selectedAtoms.length > 0) {
-      const lastAtom = selectedAtoms[selectedAtoms.length - 1];
-      setConnections([...connections, {
-        from: lastAtom,
-        to: atom,
-        id: `${lastAtom.id}-${atom.id}`
-      }]);
-      
-      // Create particles animation between the atoms (this is handled in CSS)
-      // The animation will trigger by applying a class to the atoms
-      
-      // Create a bond animation effect for the atom just selected
-      document.querySelectorAll('.atom.bond-forming').forEach(el => {
-        el.classList.remove('bond-forming');
-      });
-      
-      // Get the DOM element for the newly selected atom (this would require a ref in React,
-      // but for simplicity we're using document.querySelector here)
-      const atomElement = document.querySelector(`[data-id="${atom.id}"]`);
-      const prevAtomElement = document.querySelector(`[data-id="${lastAtom.id}"]`);
-      
-      if (atomElement && prevAtomElement) {
-        atomElement.classList.add('bond-forming');
-        prevAtomElement.classList.add('bond-forming');
-        
-        // Remove the class after animation completes
-        setTimeout(() => {
-          atomElement.classList.remove('bond-forming');
-          prevAtomElement.classList.remove('bond-forming');
-        }, 1000);
-      }
-    }
-    
     // Update element count display
     updateElementCount(newSelectedAtoms);
+    
+    // Visual feedback for successful selection
+    const atomElement = document.getElementById(`atom-${atom.id}`);
+    if (atomElement) {
+      atomElement.classList.add('pulse-effect');
+      setTimeout(() => {
+        atomElement.classList.remove('pulse-effect');
+      }, 300);
+    }
   };
 
   // Update the count of each element selected
@@ -463,9 +432,10 @@ const ChemistryCrush = () => {
     resetLevel(1);
   };
 
-  // Render atom on the game board
+  // Render atom on the game board with selection order
   const renderAtom = (atom) => {
     const isSelected = selectedAtoms.some(a => a.id === atom.id);
+    const selectionOrder = getSelectionOrder(atom);
     const elementData = elementInfo[atom.element] || { 
       color: 'linear-gradient(135deg, #777, #555)', 
       bgStyle: 'radial-gradient(circle, #777, #555)',
@@ -477,8 +447,8 @@ const ChemistryCrush = () => {
     
     return (
       <div 
+        id={`atom-${atom.id}`}
         key={atom.id}
-        data-id={atom.id}
         className={`atom ${isSelected ? 'selected' : ''}`}
         style={{ 
           background: elementData.bgStyle,
@@ -489,53 +459,17 @@ const ChemistryCrush = () => {
       >
         <div className="atom-symbol">{atom.element}</div>
         <div className="electron-shell"></div>
-        <div className="bond-electrons"></div>
-        <div className="particles-container">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="particle"></div>
-          ))}
-        </div>
+        {isSelected && 
+          <div className="selection-order">{selectionOrder}</div>
+        }
       </div>
     );
   };
 
-  // Render connections between atoms
-  const renderConnections = () => {
-    return connections.map(connection => {
-      // Calculate positions based on atom positions in the grid
-      const fromAtom = connection.from;
-      const toAtom = connection.to;
-      
-      // Calculate center positions with correct offsets for the grid
-      const cellSize = 56; // Cell size including gap
-      const atomRadius = 24; // Half of the atom size (48px)
-      
-      // Adjust the offsets to account for margins, padding and the grid structure
-      const gridOffset = 16; // Padding of the board container
-      const fromX = fromAtom.col * cellSize + atomRadius + gridOffset;
-      const fromY = fromAtom.row * cellSize + atomRadius + gridOffset;
-      const toX = toAtom.col * cellSize + atomRadius + gridOffset;
-      const toY = toAtom.row * cellSize + atomRadius + gridOffset;
-      
-      const dx = toX - fromX;
-      const dy = toY - fromY;
-      const length = Math.sqrt(dx * dx + dy * dy);
-      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-      
-      return (
-        <div 
-          key={connection.id} 
-          className="connection"
-          style={{
-            width: `${length}px`,
-            left: `${fromX}px`,
-            top: `${fromY}px`,
-            transform: `rotate(${angle}deg)`,
-            transformOrigin: '0 50%'
-          }}
-        ></div>
-      );
-    });
+  // Instead of rendering lines, we'll visualize the connection through selection order
+  const getSelectionOrder = (atom) => {
+    const index = selectedAtoms.findIndex(a => a.id === atom.id);
+    return index >= 0 ? index + 1 : null;
   };
 
   // Render the tutorial
