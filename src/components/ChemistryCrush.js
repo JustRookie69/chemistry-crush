@@ -514,7 +514,7 @@ const ChemistryCrush = () => {
           </div>
           
           <button 
-            className="start-button"
+            className="start Button"
             onClick={() => setShowTutorial(false)}
           >
             Start Learning!
