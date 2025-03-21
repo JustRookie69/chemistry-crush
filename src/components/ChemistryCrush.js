@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import './ChemistryCrush.css'; // We'll create this CSS file separately
 
-// Icons replacement (simple version without lucide-react)
+// Icons replacement using simple spans
 const Icons = {
   X: () => <span className="icon">✕</span>,
   RefreshCw: () => <span className="icon">↻</span>,
@@ -9,6 +8,8 @@ const Icons = {
   ChevronRight: () => <span className="icon">→</span>,
   ChevronLeft: () => <span className="icon">←</span>,
   AlertTriangle: () => <span className="icon">⚠</span>,
+  Flask: () => <span className="icon">⚗️</span>,
+  Lab: () => <span className="icon">🧪</span>
 };
 
 const ChemistryCrush = () => {
@@ -20,6 +21,7 @@ const ChemistryCrush = () => {
   const [moves, setMoves] = useState(10);
   const [gameBoard, setGameBoard] = useState([]);
   const [selectedAtoms, setSelectedAtoms] = useState([]);
+  const [connections, setConnections] = useState([]);
   const [compounds, setCompounds] = useState([]);
   const [completedCompounds, setCompletedCompounds] = useState(0);
   const [showTutorial, setShowTutorial] = useState(true);
@@ -132,15 +134,64 @@ const ChemistryCrush = () => {
     }
   ];
 
-  // Element colors and atomic weights (for educational purposes)
+  // Element colors and atomic weights (enhanced with gradients and textures)
   const elementInfo = {
-    'H': { color: '#3498db', name: 'Hydrogen', weight: 1.008 },   // Blue
-    'O': { color: '#e74c3c', name: 'Oxygen', weight: 16.0 },      // Red
-    'C': { color: '#2c3e50', name: 'Carbon', weight: 12.01 },     // Dark Blue/Black
-    'N': { color: '#9b59b6', name: 'Nitrogen', weight: 14.01 },   // Purple
-    'S': { color: '#f1c40f', name: 'Sulfur', weight: 32.06 },     // Yellow
-    'P': { color: '#e67e22', name: 'Phosphorus', weight: 30.97 }, // Orange
-    'Cl': { color: '#2ecc71', name: 'Chlorine', weight: 35.45 },  // Green
+    'H': { 
+      color: 'linear-gradient(135deg, #3498db, #2980b9)', 
+      bgStyle: 'radial-gradient(circle, #3498db, #2980b9)',
+      name: 'Hydrogen', 
+      weight: 1.008,
+      symbol: 'H',
+      borderColor: '#2573a7'
+    },
+    'O': { 
+      color: 'linear-gradient(135deg, #e74c3c, #c0392b)', 
+      bgStyle: 'radial-gradient(circle, #e74c3c, #c0392b)', 
+      name: 'Oxygen', 
+      weight: 16.0,
+      symbol: 'O',
+      borderColor: '#a33025'
+    },
+    'C': { 
+      color: 'linear-gradient(135deg, #2c3e50, #1a2530)', 
+      bgStyle: 'radial-gradient(circle, #2c3e50, #1a2530)', 
+      name: 'Carbon', 
+      weight: 12.01,
+      symbol: 'C',
+      borderColor: '#0f1a24'
+    },
+    'N': { 
+      color: 'linear-gradient(135deg, #9b59b6, #8e44ad)', 
+      bgStyle: 'radial-gradient(circle, #9b59b6, #8e44ad)', 
+      name: 'Nitrogen', 
+      weight: 14.01,
+      symbol: 'N',
+      borderColor: '#7d399b'
+    },
+    'S': { 
+      color: 'linear-gradient(135deg, #f1c40f, #d4ac0d)', 
+      bgStyle: 'radial-gradient(circle, #f1c40f, #d4ac0d)', 
+      name: 'Sulfur', 
+      weight: 32.06,
+      symbol: 'S',
+      borderColor: '#b7950b'
+    },
+    'P': { 
+      color: 'linear-gradient(135deg, #e67e22, #d35400)', 
+      bgStyle: 'radial-gradient(circle, #e67e22, #d35400)', 
+      name: 'Phosphorus', 
+      weight: 30.97,
+      symbol: 'P',
+      borderColor: '#b04700'
+    },
+    'Cl': { 
+      color: 'linear-gradient(135deg, #2ecc71, #27ae60)', 
+      bgStyle: 'radial-gradient(circle, #2ecc71, #27ae60)', 
+      name: 'Chlorine', 
+      weight: 35.45,
+      symbol: 'Cl',
+      borderColor: '#219652'
+    }
   };
 
   // Initialize the game board
@@ -165,6 +216,7 @@ const ChemistryCrush = () => {
     // Reset game state
     setMoves(level.moves);
     setSelectedAtoms([]);
+    setConnections([]);
     setCompletedCompounds(0);
     setCompoundHistory([]);
     setScore(0);
@@ -199,21 +251,88 @@ const ChemistryCrush = () => {
     setGameBoard(newBoard);
   };
 
+  // Check if two atoms are adjacent (horizontally, vertically, or diagonally)
+  const areAtomsAdjacent = (atom1, atom2) => {
+    const rowDiff = Math.abs(atom1.row - atom2.row);
+    const colDiff = Math.abs(atom1.col - atom2.col);
+    return (rowDiff <= 1 && colDiff <= 1) && !(rowDiff === 0 && colDiff === 0);
+  };
+
+  // Check if an atom is adjacent to any selected atom
+  const isAdjacentToSelected = (atom) => {
+    if (selectedAtoms.length === 0) return true; // First atom can be any
+    return selectedAtoms.some(selectedAtom => areAtomsAdjacent(atom, selectedAtom));
+  };
+
   // Handle atom selection
   const handleAtomClick = (atom) => {
     if (gameStatus !== 'playing' || moves <= 0) return;
     
-    // Add or remove from selection
+    // If this atom is already selected, deselect it only if it's the last one added
     const isSelected = selectedAtoms.some(a => a.id === atom.id);
     
-    let newSelectedAtoms;
     if (isSelected) {
-      newSelectedAtoms = selectedAtoms.filter(a => a.id !== atom.id);
-    } else {
-      newSelectedAtoms = [...selectedAtoms, atom];
+      if (atom.id === selectedAtoms[selectedAtoms.length - 1].id) {
+        // Remove the last connection and atom
+        const newSelectedAtoms = [...selectedAtoms];
+        newSelectedAtoms.pop();
+        
+        const newConnections = [...connections];
+        if (newConnections.length > 0) {
+          newConnections.pop();
+        }
+        
+        setSelectedAtoms(newSelectedAtoms);
+        setConnections(newConnections);
+        updateElementCount(newSelectedAtoms);
+      }
+      return;
     }
     
+    // Check if the atom is adjacent to any existing selection
+    if (!isAdjacentToSelected(atom)) {
+      setFeedbackMessage("You can only connect adjacent atoms!");
+      setShowFeedback(true);
+      return;
+    }
+    
+    // Add to selection
+    const newSelectedAtoms = [...selectedAtoms, atom];
     setSelectedAtoms(newSelectedAtoms);
+    
+    // If there's at least one previously selected atom, create a connection
+    if (selectedAtoms.length > 0) {
+      const lastAtom = selectedAtoms[selectedAtoms.length - 1];
+      setConnections([...connections, {
+        from: lastAtom,
+        to: atom,
+        id: `${lastAtom.id}-${atom.id}`
+      }]);
+      
+      // Create particles animation between the atoms (this is handled in CSS)
+      // The animation will trigger by applying a class to the atoms
+      
+      // Create a bond animation effect for the atom just selected
+      document.querySelectorAll('.atom.bond-forming').forEach(el => {
+        el.classList.remove('bond-forming');
+      });
+      
+      // Get the DOM element for the newly selected atom (this would require a ref in React,
+      // but for simplicity we're using document.querySelector here)
+      const atomElement = document.querySelector(`[data-id="${atom.id}"]`);
+      const prevAtomElement = document.querySelector(`[data-id="${lastAtom.id}"]`);
+      
+      if (atomElement && prevAtomElement) {
+        atomElement.classList.add('bond-forming');
+        prevAtomElement.classList.add('bond-forming');
+        
+        // Remove the class after animation completes
+        setTimeout(() => {
+          atomElement.classList.remove('bond-forming');
+          prevAtomElement.classList.remove('bond-forming');
+        }, 1000);
+      }
+    }
     
     // Update element count display
     updateElementCount(newSelectedAtoms);
@@ -283,7 +402,7 @@ const ChemistryCrush = () => {
         setGameBoard(newBoard);
         
         // Show positive feedback
-        setFeedbackMessage(`Correct! You formed ${target.formula}`);
+        setFeedbackMessage(`Compound Brewed! You formed ${target.formula}`);
         setShowFeedback(true);
         
         // Check if target score has been reached
@@ -306,6 +425,7 @@ const ChemistryCrush = () => {
     // Use a move regardless of success
     setMoves(moves - 1);
     setSelectedAtoms([]);
+    setConnections([]);
     setShowElementCount({});
     
     // Check loss condition
@@ -346,19 +466,76 @@ const ChemistryCrush = () => {
   // Render atom on the game board
   const renderAtom = (atom) => {
     const isSelected = selectedAtoms.some(a => a.id === atom.id);
-    const elementData = elementInfo[atom.element] || { color: '#777', name: atom.element, weight: 0 };
+    const elementData = elementInfo[atom.element] || { 
+      color: 'linear-gradient(135deg, #777, #555)', 
+      bgStyle: 'radial-gradient(circle, #777, #555)',
+      name: atom.element, 
+      weight: 0,
+      symbol: atom.element,
+      borderColor: '#444'
+    };
     
     return (
       <div 
         key={atom.id}
+        data-id={atom.id}
         className={`atom ${isSelected ? 'selected' : ''}`}
-        style={{ backgroundColor: elementData.color }}
+        style={{ 
+          background: elementData.bgStyle,
+          borderColor: elementData.borderColor
+        }}
         onClick={() => handleAtomClick(atom)}
         title={`${elementData.name} (${atom.element})`}
       >
-        {atom.element}
+        <div className="atom-symbol">{atom.element}</div>
+        <div className="electron-shell"></div>
+        <div className="bond-electrons"></div>
+        <div className="particles-container">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="particle"></div>
+          ))}
+        </div>
       </div>
     );
+  };
+
+  // Render connections between atoms
+  const renderConnections = () => {
+    return connections.map(connection => {
+      // Calculate positions based on atom positions in the grid
+      const fromAtom = connection.from;
+      const toAtom = connection.to;
+      
+      // Calculate center positions with correct offsets for the grid
+      const cellSize = 56; // Cell size including gap
+      const atomRadius = 24; // Half of the atom size (48px)
+      
+      // Adjust the offsets to account for margins, padding and the grid structure
+      const gridOffset = 16; // Padding of the board container
+      const fromX = fromAtom.col * cellSize + atomRadius + gridOffset;
+      const fromY = fromAtom.row * cellSize + atomRadius + gridOffset;
+      const toX = toAtom.col * cellSize + atomRadius + gridOffset;
+      const toY = toAtom.row * cellSize + atomRadius + gridOffset;
+      
+      const dx = toX - fromX;
+      const dy = toY - fromY;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      
+      return (
+        <div 
+          key={connection.id} 
+          className="connection"
+          style={{
+            width: `${length}px`,
+            left: `${fromX}px`,
+            top: `${fromY}px`,
+            transform: `rotate(${angle}deg)`,
+            transformOrigin: '0 50%'
+          }}
+        ></div>
+      );
+    });
   };
 
   // Render the tutorial
@@ -382,19 +559,19 @@ const ChemistryCrush = () => {
             <div className="tutorial-section">
               <p className="section-title">How to Play:</p>
               <ol>
-                <li>Click on atoms to select them</li>
+                <li>Click on adjacent atoms to connect them</li>
                 <li>Pay attention to the ratio display as you select</li>
                 <li>Form compounds by selecting atoms in the correct ratio</li>
-                <li>Click "Form Compound" to check your selection</li>
+                <li>Click "Brew Compound" to check your selection</li>
               </ol>
             </div>
             
             <div className="example-section">
               <p className="section-title">Example: Water (H₂O)</p>
               <div className="example-atoms">
-                <div className="example-atom" style={{ backgroundColor: elementInfo['H'].color }}>H</div>
-                <div className="example-atom" style={{ backgroundColor: elementInfo['H'].color }}>H</div>
-                <div className="example-atom" style={{ backgroundColor: elementInfo['O'].color }}>O</div>
+                <div className="example-atom" style={{ background: elementInfo['H'].bgStyle }}>H</div>
+                <div className="example-atom" style={{ background: elementInfo['H'].bgStyle }}>H</div>
+                <div className="example-atom" style={{ background: elementInfo['O'].bgStyle }}>O</div>
                 <span className="equals">=</span>
                 <div className="compound">H₂O</div>
               </div>
@@ -517,7 +694,7 @@ const ChemistryCrush = () => {
                 <div className="stat-box">
                   <p className="stat-label">Accuracy</p>
                   <p className="stat-value">
-                    {Math.round((correctTries / (correctTries + incorrectTries)) * 100)}%
+                    {Math.round((correctTries / (correctTries + incorrectTries || 1)) * 100)}%
                   </p>
                 </div>
               </div>
@@ -556,7 +733,7 @@ const ChemistryCrush = () => {
               <span className="ratio-element">
                 <div 
                   className="small-atom"
-                  style={{ backgroundColor: elementInfo[element]?.color || '#777' }}
+                  style={{ background: elementInfo[element]?.bgStyle || '#777' }}
                 >
                   {element}
                 </div>
@@ -574,7 +751,7 @@ const ChemistryCrush = () => {
   const renderFeedback = () => {
     if (!showFeedback) return null;
     
-    const isCorrect = feedbackMessage.startsWith('Correct');
+    const isCorrect = feedbackMessage.startsWith('Compound') || feedbackMessage.startsWith('Correct');
     
     return (
       <div className={`feedback-message ${isCorrect ? 'correct' : 'incorrect'}`}>
@@ -658,8 +835,10 @@ const ChemistryCrush = () => {
       
       {/* Game Board */}
       <div className="board-container">
-        <div className="game-board">
-          {gameBoard.flat().map(atom => renderAtom(atom))}
+        <div className="game-board-wrapper">
+          <div className="game-board">
+            {gameBoard.flat().map(atom => renderAtom(atom))}
+          </div>
         </div>
         
         {/* Selected Atoms Display */}
@@ -670,7 +849,7 @@ const ChemistryCrush = () => {
                 <React.Fragment key={atom.id}>
                   <div 
                     className="selected-atom"
-                    style={{ backgroundColor: elementInfo[atom.element]?.color || '#777' }}
+                    style={{ background: elementInfo[atom.element]?.bgStyle || '#777' }}
                   >
                     {atom.element}
                   </div>
@@ -697,6 +876,7 @@ const ChemistryCrush = () => {
             className={`clear-button ${selectedAtoms.length === 0 ? 'disabled' : ''}`}
             onClick={() => {
               setSelectedAtoms([]);
+              setConnections([]);
               setShowElementCount({});
             }}
             disabled={selectedAtoms.length === 0}
@@ -705,11 +885,11 @@ const ChemistryCrush = () => {
           </button>
           
           <button 
-            className={`form-button ${selectedAtoms.length === 0 ? 'disabled' : ''}`}
+            className={`brew-button ${selectedAtoms.length === 0 ? 'disabled' : ''}`}
             onClick={checkCompound}
             disabled={selectedAtoms.length === 0}
           >
-            Form Compound
+            <Icons.Flask /> Brew Compound
           </button>
         </div>
       </div>
@@ -748,6 +928,772 @@ const ChemistryCrush = () => {
       
       {/* Game Completion Screen */}
       {gameCompleted && renderGameCompletion()}
+
+      <style jsx>{`
+        /* Game container */
+        .game-container {
+          max-width: 600px;
+          margin: 0 auto;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+        
+        /* Header */
+        .game-header {
+          background-color: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+        }
+        
+        .header-bar {
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+          color: white;
+          padding: 15px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        
+        .title-section {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        
+        .game-title {
+          font-size: 24px;
+          font-weight: bold;
+        }
+        
+        .level-indicator {
+          font-size: 18px;
+          font-weight: 600;
+        }
+        
+        .info-button {
+          background: none;
+          border: none;
+          color: white;
+          cursor: pointer;
+          font-size: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+        }
+        
+        .info-button:hover {
+          background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .game-info {
+          padding: 15px;
+        }
+        
+        .stats {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 15px;
+        }
+        
+        .stat-item {
+          font-size: 14px;
+        }
+        
+        .stat-value {
+          color: #3b82f6;
+          font-weight: bold;
+        }
+        
+        /* Target box */
+        .target-box {
+          background-color: #e6f0ff;
+          padding: 10px;
+          border-radius: 8px;
+          margin-bottom: 15px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .target-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 5px;
+        }
+        
+        .target-label, .target-score {
+          font-size: 14px;
+          font-weight: 600;
+        }
+        
+        .target-info {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        
+        .compound-formula {
+          font-size: 20px;
+          font-weight: bold;
+        }
+        
+        .compound-description {
+          font-size: 14px;
+        }
+        
+        /* Progress box */
+        .progress-box {
+          background-color: #e6ffed;
+          padding: 10px;
+          border-radius: 8px;
+          margin-bottom: 15px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .progress-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 5px;
+        }
+        
+        .progress-label {
+          font-size: 14px;
+          font-weight: 600;
+        }
+        
+        .progress-count {
+          display: flex;
+          align-items: center;
+        }
+        
+        .count-value {
+          font-size: 18px;
+          font-weight: bold;
+          color: #22c55e;
+        }
+        
+        .count-label {
+          font-size: 14px;
+          margin-left: 4px;
+        }
+        
+        .progress-bar-container {
+          height: 8px;
+          background-color: #d1d5db;
+          border-radius: 4px;
+          overflow: hidden;
+        }
+        
+        .progress-bar {
+          height: 100%;
+          background-color: #22c55e;
+          transition: width 0.5s ease;
+        }
+        
+        /* Ratio display */
+        .ratio-display {
+          background-color: #fff9e6;
+          padding: 10px;
+          border-radius: 8px;
+          margin-bottom: 10px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .ratio-title {
+          font-size: 14px;
+          font-weight: 600;
+          margin-bottom: 5px;
+        }
+        
+        .ratio-values {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 5px;
+        }
+        
+        .ratio-element {
+          display: flex;
+          align-items: center;
+        }
+        
+        .small-atom {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          color: white;
+          font-weight: bold;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .element-count {
+          font-weight: bold;
+          margin-left: 5px;
+        }
+        
+        .ratio-separator {
+          font-weight: bold;
+        }
+        
+        /* Feedback message */
+        .feedback-message {
+          margin-top: 10px;
+          padding: 10px;
+          border-radius: 8px;
+          text-align: center;
+          font-weight: 500;
+          animation: fadeIn 0.3s ease;
+        }
+        
+        .feedback-message.correct {
+          background-color: #dcfce7;
+          color: #166534;
+        }
+        
+        .feedback-message.incorrect {
+          background-color: #fee2e2;
+          color: #b91c1c;
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Game board */
+        .board-container {
+          background-color: white;
+          padding: 16px;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .game-board-wrapper {
+          position: relative;
+          margin-bottom: 16px;
+        }
+        
+        .game-board {
+          display: grid;
+          grid-template-columns: repeat(6, 1fr);
+          gap: 8px;
+        }
+        
+        .connections-container {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+        }
+        
+        .connection {
+          position: absolute;
+          height: 4px;
+          background-color: rgba(59, 130, 246, 0.6);
+          transform-origin: 0 50%;
+          border-radius: 2px;
+          box-shadow: 0 0 5px rgba(59, 130, 246, 0.3);
+        }
+        
+        .atom {
+          position: relative;
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          color: white;
+          font-size: 18px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          margin: 4px;
+          border: 2px solid transparent;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+        }
+        
+        .atom .electron-shell {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          border: 2px dotted rgba(255, 255, 255, 0.4);
+          border-radius: 50%;
+          animation: rotate 10s linear infinite;
+        }
+        
+        @keyframes rotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        .atom.selected {
+          transform: scale(1.1);
+          box-shadow: 0 0 0 3px #fbbf24, 0 2px 8px rgba(0, 0, 0, 0.2);
+          z-index: 10;
+        }
+        
+        /* Selected atoms display */
+        .selection-display {
+          background-color: #f3f4f6;
+          border-radius: 6px;
+          padding: 16px;
+          min-height: 64px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 16px;
+        }
+        
+        .selected-atoms {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .selected-atom {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          color: white;
+          margin: 4px;
+        }
+        
+        .plus-sign {
+          margin: 0 4px;
+        }
+        
+        .selection-hint {
+          color: #6b7280;
+          font-size: 14px;
+        }
+        
+        /* Hint box */
+        .hint-box {
+          background-color: #e6ffed;
+          padding: 10px;
+          border-radius: 8px;
+          margin-bottom: 16px;
+          font-size: 14px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .hint-title {
+          font-weight: 600;
+          margin-bottom: 4px;
+        }
+        
+        /* Action buttons */
+        .action-buttons {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 16px;
+        }
+        
+        .clear-button, .brew-button {
+          padding: 10px 16px;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          border: none;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        
+        .clear-button {
+          background-color: #e5e7eb;
+          color: #4b5563;
+        }
+        
+        .clear-button:hover:not(.disabled) {
+          background-color: #d1d5db;
+        }
+        
+        .brew-button {
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+          color: white;
+        }
+        
+        .brew-button:hover:not(.disabled) {
+          background: linear-gradient(135deg, #2563eb, #1e40af);
+          transform: translateY(-2px);
+        }
+        
+        .disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        
+        /* Level navigation */
+        .level-navigation {
+          display: flex;
+          justify-content: space-between;
+        }
+        
+        .nav-button {
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          border: none;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.2s;
+        }
+        
+        .prev-button, .next-button {
+          background-color: #e5e7eb;
+          color: #4b5563;
+        }
+        
+        .prev-button:hover:not(.disabled), .next-button:hover:not(.disabled) {
+          background-color: #d1d5db;
+        }
+        
+        .restart-button {
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+          color: white;
+        }
+        
+        .restart-button:hover {
+          background: linear-gradient(135deg, #2563eb, #1e40af);
+          transform: translateY(-2px);
+        }
+        
+        /* Modal and overlay */
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.7);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 50;
+        }
+        
+        .modal {
+          background-color: white;
+          padding: 24px;
+          border-radius: 8px;
+          max-width: 90%;
+          width: 500px;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+        
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+        }
+        
+        .modal-header h2 {
+          font-size: 20px;
+          font-weight: bold;
+        }
+        
+        .close-button {
+          background: none;
+          border: none;
+          font-size: 18px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+        }
+        
+        .close-button:hover {
+          background-color: #f3f4f6;
+        }
+        
+        .modal-content {
+          margin-bottom: 16px;
+        }
+        
+        .section-heading {
+          font-weight: 600;
+          margin-bottom: 16px;
+        }
+        
+        .tutorial-section, .example-section {
+          background-color: #f3f8ff;
+          padding: 16px;
+          border-radius: 8px;
+          margin-bottom: 16px;
+        }
+        
+        .example-section {
+          background-color: #fff9e6;
+        }
+        
+        .section-title {
+          font-weight: 600;
+          margin-bottom: 8px;
+        }
+        
+        .tutorial-section ol {
+          padding-left: 20px;
+          list-style-position: inside;
+        }
+        
+        .tutorial-section li {
+          margin-bottom: 6px;
+        }
+        
+        .example-atoms {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+        
+        .example-atom {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          color: white;
+        }
+        
+        .equals {
+          font-weight: bold;
+        }
+        
+        .compound {
+          padding: 4px 8px;
+          background-color: #e6ffed;
+          border-radius: 4px;
+        }
+        
+        .start-button {
+          width: 100%;
+          padding: 12px;
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        
+        .start-button:hover {
+          background: linear-gradient(135deg, #2563eb, #1e40af);
+          transform: translateY(-2px);
+        }
+        
+        /* Game over modal */
+        .result-title {
+          font-size: 24px;
+          text-align: center;
+          font-weight: bold;
+          margin-bottom: 16px;
+        }
+        
+        .result-content {
+          margin-bottom: 16px;
+          text-align: center;
+        }
+        
+        .result-content p {
+          margin-bottom: 8px;
+        }
+        
+        .info-box {
+          background-color: #f3f8ff;
+          padding: 16px;
+          border-radius: 8px;
+          margin-bottom: 16px;
+          text-align: left;
+        }
+        
+        .info-box.green {
+          background-color: #e6ffed;
+        }
+        
+        .info-title {
+          font-weight: 600;
+          margin-bottom: 8px;
+        }
+        
+        .compound-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          justify-content: center;
+        }
+        
+        .compound-tag {
+          background-color: #e6f0ff;
+          border-radius: 16px;
+          padding: 4px 8px;
+          font-size: 14px;
+        }
+        
+        .score {
+          font-size: 18px;
+          font-weight: 600;
+          margin-top: 16px;
+        }
+        
+        .button-row {
+          display: flex;
+          justify-content: center;
+          gap: 16px;
+        }
+        
+        .game-button {
+          padding: 10px 16px;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          border: none;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.2s;
+        }
+        
+        .retry-button {
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+          color: white;
+        }
+        
+        .retry-button:hover {
+          background: linear-gradient(135deg, #2563eb, #1e40af);
+          transform: translateY(-2px);
+        }
+        
+        .next-button, .play-again-button {
+          background: linear-gradient(135deg, #22c55e, #16a34a);
+          color: white;
+        }
+        
+        .next-button:hover:not(.disabled), .play-again-button:hover {
+          background: linear-gradient(135deg, #16a34a, #15803d);
+          transform: translateY(-2px);
+        }
+        
+        /* Icons */
+        .icon {
+          font-size: 16px;
+          display: inline-block;
+        }
+        
+        /* Trophy icon in game completion */
+        .trophy-icon {
+          font-size: 60px;
+          margin-bottom: 16px;
+        }
+        
+        .congratulations {
+          font-size: 18px;
+          font-weight: 600;
+          margin-bottom: 16px;
+        }
+        
+        .final-stats {
+          background-color: #f3f8ff;
+          padding: 16px;
+          border-radius: 8px;
+          margin: 16px 0;
+        }
+        
+        .final-stats h3 {
+          text-align: center;
+          margin-bottom: 12px;
+        }
+        
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+        }
+        
+        .stat-box {
+          background-color: white;
+          padding: 10px;
+          border-radius: 6px;
+          text-align: center;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .stat-label {
+          font-size: 14px;
+          margin-bottom: 4px;
+        }
+        
+        .stat-value {
+          font-size: 24px;
+          font-weight: bold;
+          color: #3b82f6;
+        }
+        
+        .mastery-message {
+          font-size: 16px;
+          font-weight: 500;
+          color: #4b5563;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+          .game-container {
+            padding: 10px;
+          }
+          
+          .atom {
+            width: 40px;
+            height: 40px;
+            font-size: 16px;
+          }
+          
+          .compound-formula {
+            font-size: 18px;
+          }
+          
+          .compound-description {
+            font-size: 12px;
+          }
+          
+          .nav-button {
+            padding: 6px 10px;
+            font-size: 14px;
+          }
+        }
+      `}</style>
     </div>
   );
 };
