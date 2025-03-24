@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // Icons replacement using simple spans
 const Icons = {
@@ -9,7 +9,9 @@ const Icons = {
   ChevronLeft: () => <span className="icon">←</span>,
   AlertTriangle: () => <span className="icon">⚠</span>,
   Flask: () => <span className="icon">⚗️</span>,
-  Lab: () => <span className="icon">🧪</span>
+  Lab: () => <span className="icon">🧪</span>,
+  Music: () => <span className="icon">🎵</span>,
+  MusicOff: () => <span className="icon">🔇</span>
 };
 
 const ChemistryCrush = () => {
@@ -33,12 +35,22 @@ const ChemistryCrush = () => {
   const [correctTries, setCorrectTries] = useState(0);
   const [incorrectTries, setIncorrectTries] = useState(0);
   const [gameCompleted, setGameCompleted] = useState(false);
+  const [isMusicPlaying, setIsMusicPlaying] = useState(true);
+  
+  // Audio refs
+  const backgroundMusicRef = useRef(null);
+  const selectSoundRef = useRef(null);
+  const successSoundRef = useRef(null);
+  const failSoundRef = useRef(null);
+  const levelUpSoundRef = useRef(null);
   
   // Level definitions
   const levels = [
     {
       id: 1,
       elements: ['H', 'O'],
+      extraElements: ['N'],
+      extraElementProbability: 0.15,
       targets: [
         { formula: 'H₂O', atoms: [{ element: 'H', count: 2 }, { element: 'O', count: 1 }] }
       ],
@@ -51,6 +63,8 @@ const ChemistryCrush = () => {
     {
       id: 2,
       elements: ['H', 'O'],
+      extraElements: ['C'],
+      extraElementProbability: 0.18,
       targets: [
         { formula: 'H₂O₂', atoms: [{ element: 'H', count: 2 }, { element: 'O', count: 2 }] }
       ],
@@ -63,6 +77,8 @@ const ChemistryCrush = () => {
     {
       id: 3,
       elements: ['C', 'O'],
+      extraElements: ['H', 'N'],
+      extraElementProbability: 0.2,
       targets: [
         { formula: 'CO₂', atoms: [{ element: 'C', count: 1 }, { element: 'O', count: 2 }] }
       ],
@@ -75,6 +91,8 @@ const ChemistryCrush = () => {
     {
       id: 4,
       elements: ['C', 'O'],
+      extraElements: ['P', 'S'],
+      extraElementProbability: 0.22,
       targets: [
         { formula: 'CO', atoms: [{ element: 'C', count: 1 }, { element: 'O', count: 1 }] }
       ],
@@ -87,6 +105,8 @@ const ChemistryCrush = () => {
     {
       id: 5,
       elements: ['N', 'H'],
+      extraElements: ['O', 'C'],
+      extraElementProbability: 0.25,
       targets: [
         { formula: 'NH₃', atoms: [{ element: 'N', count: 1 }, { element: 'H', count: 3 }] }
       ],
@@ -99,6 +119,8 @@ const ChemistryCrush = () => {
     {
       id: 6,
       elements: ['C', 'H'],
+      extraElements: ['O', 'N', 'Cl'],
+      extraElementProbability: 0.25,
       targets: [
         { formula: 'CH₄', atoms: [{ element: 'C', count: 1 }, { element: 'H', count: 4 }] }
       ],
@@ -111,6 +133,8 @@ const ChemistryCrush = () => {
     {
       id: 7,
       elements: ['C', 'H', 'O'],
+      extraElements: ['N', 'P'],
+      extraElementProbability: 0.28,
       targets: [
         { formula: 'C₂H₅OH', atoms: [{ element: 'C', count: 2 }, { element: 'H', count: 6 }, { element: 'O', count: 1 }] }
       ],
@@ -123,6 +147,8 @@ const ChemistryCrush = () => {
     {
       id: 8,
       elements: ['C', 'H', 'O'],
+      extraElements: ['N', 'P', 'S', 'Cl'],
+      extraElementProbability: 0.3,
       targets: [
         { formula: 'C₆H₁₂O₆', atoms: [{ element: 'C', count: 6 }, { element: 'H', count: 12 }, { element: 'O', count: 6 }] }
       ],
@@ -194,6 +220,51 @@ const ChemistryCrush = () => {
     }
   };
 
+  // Initialize audio elements
+  useEffect(() => {
+    // Create audio elements
+    backgroundMusicRef.current = new Audio('/api/placeholder/400/320');
+    backgroundMusicRef.current.loop = true;
+    backgroundMusicRef.current.volume = 0.3;
+    
+    selectSoundRef.current = new Audio('/api/placeholder/400/320');
+    selectSoundRef.current.volume = 0.4;
+    
+    successSoundRef.current = new Audio('/api/placeholder/400/320');
+    successSoundRef.current.volume = 0.5;
+    
+    failSoundRef.current = new Audio('/api/placeholder/400/320');
+    failSoundRef.current.volume = 0.4;
+    
+    levelUpSoundRef.current = new Audio('/api/placeholder/400/320');
+    levelUpSoundRef.current.volume = 0.6;
+    
+    // Start background music
+    if (isMusicPlaying) {
+      backgroundMusicRef.current.play().catch(e => console.log("Auto-play prevented by browser"));
+    }
+    
+    // Cleanup
+    return () => {
+      if (backgroundMusicRef.current) backgroundMusicRef.current.pause();
+      if (selectSoundRef.current) selectSoundRef.current.pause();
+      if (successSoundRef.current) successSoundRef.current.pause();
+      if (failSoundRef.current) failSoundRef.current.pause();
+      if (levelUpSoundRef.current) levelUpSoundRef.current.pause();
+    };
+  }, []);
+
+  // Handle music toggle
+  useEffect(() => {
+    if (backgroundMusicRef.current) {
+      if (isMusicPlaying) {
+        backgroundMusicRef.current.play().catch(e => console.log("Auto-play prevented by browser"));
+      } else {
+        backgroundMusicRef.current.pause();
+      }
+    }
+  }, [isMusicPlaying]);
+
   // Initialize the game board
   useEffect(() => {
     resetLevel(currentLevel);
@@ -208,6 +279,40 @@ const ChemistryCrush = () => {
       return () => clearTimeout(timer);
     }
   }, [showFeedback]);
+
+  // Function to play sound effects
+  const playSound = (soundType) => {
+    if (!isMusicPlaying) return; // Don't play if sound is muted
+    
+    switch (soundType) {
+      case 'select':
+        if (selectSoundRef.current) {
+          selectSoundRef.current.currentTime = 0;
+          selectSoundRef.current.play().catch(e => console.log("Sound play error"));
+        }
+        break;
+      case 'success':
+        if (successSoundRef.current) {
+          successSoundRef.current.currentTime = 0;
+          successSoundRef.current.play().catch(e => console.log("Sound play error"));
+        }
+        break;
+      case 'fail':
+        if (failSoundRef.current) {
+          failSoundRef.current.currentTime = 0;
+          failSoundRef.current.play().catch(e => console.log("Sound play error"));
+        }
+        break;
+      case 'levelup':
+        if (levelUpSoundRef.current) {
+          levelUpSoundRef.current.currentTime = 0;
+          levelUpSoundRef.current.play().catch(e => console.log("Sound play error"));
+        }
+        break;
+      default:
+        break;
+    }
+  };
 
   // Create a new game board for the current level
   const resetLevel = (levelNum) => {
@@ -230,16 +335,27 @@ const ChemistryCrush = () => {
     setCompounds(level.targets);
     
     // Create the board
-    const elements = level.elements;
+    const mainElements = level.elements;
+    const extraElements = level.extraElements || [];
+    const extraElementProbability = level.extraElementProbability || 0;
     const newBoard = [];
     
     // Create a 6x6 board with a balanced distribution of elements
     for (let row = 0; row < 6; row++) {
       const newRow = [];
       for (let col = 0; col < 6; col++) {
-        const randomElement = elements[Math.floor(Math.random() * elements.length)];
+        // Decide whether to use a main element or an extra element
+        let element;
+        if (extraElements.length > 0 && Math.random() < extraElementProbability) {
+          // Use an extra element
+          element = extraElements[Math.floor(Math.random() * extraElements.length)];
+        } else {
+          // Use a main element
+          element = mainElements[Math.floor(Math.random() * mainElements.length)];
+        }
+        
         newRow.push({
-          element: randomElement,
+          element: element,
           row,
           col,
           id: `${row}-${col}`
@@ -279,6 +395,7 @@ const ChemistryCrush = () => {
         
         setSelectedAtoms(newSelectedAtoms);
         updateElementCount(newSelectedAtoms);
+        playSound('select');
       }
       return;
     }
@@ -287,6 +404,7 @@ const ChemistryCrush = () => {
     if (!isAdjacentToSelected(atom)) {
       setFeedbackMessage("You can only connect adjacent atoms!");
       setShowFeedback(true);
+      playSound('fail');
       return;
     }
     
@@ -296,6 +414,9 @@ const ChemistryCrush = () => {
     
     // Update element count display
     updateElementCount(newSelectedAtoms);
+    
+    // Play sound
+    playSound('select');
     
     // Visual feedback for successful selection
     const atomElement = document.getElementById(`atom-${atom.id}`);
@@ -357,14 +478,28 @@ const ChemistryCrush = () => {
         // Increment correct tries
         setCorrectTries(correctTries + 1);
         
+        // Play success sound
+        playSound('success');
+        
         // Replace selected atoms with new random ones
         const newBoard = [...gameBoard];
         selectedAtoms.forEach(atom => {
           const level = levels.find(l => l.id === currentLevel);
-          const randomElement = level.elements[Math.floor(Math.random() * level.elements.length)];
+          
+          // Decide whether to use a main element or an extra element
+          let element;
+          if (level.extraElements && level.extraElements.length > 0 && 
+              Math.random() < level.extraElementProbability) {
+            // Use an extra element
+            element = level.extraElements[Math.floor(Math.random() * level.extraElements.length)];
+          } else {
+            // Use a main element
+            element = level.elements[Math.floor(Math.random() * level.elements.length)];
+          }
+          
           newBoard[atom.row][atom.col] = {
             ...newBoard[atom.row][atom.col],
-            element: randomElement
+            element: element
           };
         });
         
@@ -377,6 +512,7 @@ const ChemistryCrush = () => {
         // Check if target score has been reached
         if (newScore >= targetScore) {
           setGameStatus('won');
+          playSound('levelup');
         }
       }
     });
@@ -385,6 +521,9 @@ const ChemistryCrush = () => {
     if (!compoundFound) {
       // Increment incorrect tries
       setIncorrectTries(incorrectTries + 1);
+      
+      // Play fail sound
+      playSound('fail');
       
       // Show negative feedback
       setFeedbackMessage("Incorrect compound! Check your ratios");
@@ -400,6 +539,7 @@ const ChemistryCrush = () => {
     // Check loss condition
     if (moves <= 1 && !compoundFound && score < targetScore) {
       setGameStatus('lost');
+      playSound('fail');
     }
     
     return compoundFound;
@@ -409,9 +549,11 @@ const ChemistryCrush = () => {
   const nextLevel = () => {
     if (currentLevel < levels.length) {
       setCurrentLevel(currentLevel + 1);
+      playSound('levelup');
     } else if (currentLevel === levels.length && gameStatus === 'won') {
       // Game completed - all levels finished
       setGameCompleted(true);
+      playSound('levelup');
     }
   };
 
@@ -432,10 +574,19 @@ const ChemistryCrush = () => {
     resetLevel(1);
   };
 
-  // Render atom on the game board with selection order
+  // Toggle music
+  const toggleMusic = () => {
+    setIsMusicPlaying(!isMusicPlaying);
+  };
+
+  // Get count of element in selected atoms
+  const getElementCount = (element) => {
+    return selectedAtoms.filter(atom => atom.element === element).length;
+  };
+
+  // Render atom on the game board
   const renderAtom = (atom) => {
     const isSelected = selectedAtoms.some(a => a.id === atom.id);
-    const selectionOrder = getSelectionOrder(atom);
     const elementData = elementInfo[atom.element] || { 
       color: 'linear-gradient(135deg, #777, #555)', 
       bgStyle: 'radial-gradient(circle, #777, #555)',
@@ -459,17 +610,13 @@ const ChemistryCrush = () => {
       >
         <div className="atom-symbol">{atom.element}</div>
         <div className="electron-shell"></div>
-        {isSelected && 
-          <div className="selection-order">{selectionOrder}</div>
-        }
+        {isSelected && (
+          <div className="selection-order">
+            {atom.element}{getElementCount(atom.element)}
+          </div>
+        )}
       </div>
     );
-  };
-
-  // Instead of rendering lines, we'll visualize the connection through selection order
-  const getSelectionOrder = (atom) => {
-    const index = selectedAtoms.findIndex(a => a.id === atom.id);
-    return index >= 0 ? index + 1 : null;
   };
 
   // Render the tutorial
@@ -514,7 +661,7 @@ const ChemistryCrush = () => {
           </div>
           
           <button 
-            className="start Button"
+            className="start-button"
             onClick={() => setShowTutorial(false)}
           >
             Start Learning!
@@ -708,7 +855,16 @@ const ChemistryCrush = () => {
               <Icons.Info />
             </button>
           </div>
-          <div className="level-indicator">Level {currentLevel}</div>
+          <div className="controls">
+            <button 
+              className="music-button"
+              onClick={toggleMusic}
+              title={isMusicPlaying ? "Mute Sound" : "Play Sound"}
+            >
+              {isMusicPlaying ? <Icons.Music /> : <Icons.MusicOff />}
+            </button>
+            <div className="level-indicator">Level {currentLevel}</div>
+          </div>
         </div>
         
         <div className="game-info">
@@ -897,6 +1053,12 @@ const ChemistryCrush = () => {
           align-items: center;
           gap: 10px;
         }
+
+        .controls {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
         
         .game-title {
           font-size: 24px;
@@ -908,7 +1070,7 @@ const ChemistryCrush = () => {
           font-weight: 600;
         }
         
-        .info-button {
+        .info-button, .music-button {
           background: none;
           border: none;
           color: white;
@@ -920,10 +1082,12 @@ const ChemistryCrush = () => {
           width: 32px;
           height: 32px;
           border-radius: 50%;
+          transition: all 0.2s;
         }
         
-        .info-button:hover {
+        .info-button:hover, .music-button:hover {
           background-color: rgba(255, 255, 255, 0.2);
+          transform: scale(1.1);
         }
         
         .game-info {
@@ -1181,6 +1345,35 @@ const ChemistryCrush = () => {
           box-shadow: 0 0 0 3px #fbbf24, 0 2px 8px rgba(0, 0, 0, 0.2);
           z-index: 10;
         }
+
+        .selection-order {
+          position: absolute;
+          top: -5px;
+          right: -5px;
+          min-width: 20px;
+          height: 20px;
+          background-color: #fbbf24;
+          color: #000;
+          font-size: 11px;
+          font-weight: bold;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 4px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          z-index: 15;
+        }
+        
+        @keyframes pulseEffect {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.2); }
+          100% { transform: scale(1); }
+        }
+        
+        .pulse-effect {
+          animation: pulseEffect 0.3s ease;
+        }
         
         /* Selected atoms display */
         .selection-display {
@@ -1334,10 +1527,16 @@ const ChemistryCrush = () => {
         .modal {
           background-color: white;
           padding: 24px;
-          border-radius: 8px;
+          border-radius: 12px;
           max-width: 90%;
           width: 500px;
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+          animation: modalSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes modalSlideIn {
+          from { opacity: 0; transform: translateY(-30px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         
         .modal-header {
@@ -1348,8 +1547,11 @@ const ChemistryCrush = () => {
         }
         
         .modal-header h2 {
-          font-size: 20px;
+          font-size: 24px;
           font-weight: bold;
+          background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
         }
         
         .close-button {
@@ -1430,23 +1632,44 @@ const ChemistryCrush = () => {
           padding: 4px 8px;
           background-color: #e6ffed;
           border-radius: 4px;
+          font-weight: bold;
         }
         
         .start-button {
           width: 100%;
-          padding: 12px;
+          padding: 14px;
           background: linear-gradient(135deg, #3b82f6, #1d4ed8);
           color: white;
           border: none;
-          border-radius: 8px;
+          border-radius: 12px;
           font-weight: 600;
+          font-size: 16px;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.3s;
+          box-shadow: 0 4px 6px rgba(29, 78, 216, 0.25);
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .start-button:before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+          transition: 0.5s;
         }
         
         .start-button:hover {
           background: linear-gradient(135deg, #2563eb, #1e40af);
           transform: translateY(-2px);
+          box-shadow: 0 6px 12px rgba(29, 78, 216, 0.3);
+        }
+        
+        .start-button:hover:before {
+          left: 100%;
         }
         
         /* Game over modal */
