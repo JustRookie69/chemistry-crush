@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/chemistry-crush/static/css/main.e6c13ad2.css",
+    "main.js": "/chemistry-crush/static/js/main.c47724c4.js",
+    "static/js/453.bcd8496b.chunk.js": "/chemistry-crush/static/js/453.bcd8496b.chunk.js",
+    "index.html": "/chemistry-crush/index.html",
+    "main.e6c13ad2.css.map": "/chemistry-crush/static/css/main.e6c13ad2.css.map",
+    "main.c47724c4.js.map": "/chemistry-crush/static/js/main.c47724c4.js.map",
+    "453.bcd8496b.chunk.js.map": "/chemistry-crush/static/js/453.bcd8496b.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.e6c13ad2.css",
+    "static/js/main.c47724c4.js"
+  ]
+}
